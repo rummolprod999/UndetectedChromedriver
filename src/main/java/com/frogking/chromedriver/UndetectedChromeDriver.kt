@@ -1,264 +1,238 @@
-package com.frogking.chromedriver;
+package com.frogking.chromedriver
 
-import org.openqa.selenium.Capabilities;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeDriverService;
-import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.Capabilities
+import org.openqa.selenium.chrome.ChromeDriver
+import org.openqa.selenium.chrome.ChromeOptions
+import java.io.BufferedReader
+import java.io.File
+import java.io.InputStreamReader
 
-import java.io.*;
-import java.util.*;
-
-public class UndetectedChromeDriver extends ChromeDriver{
-
-    private boolean _headless;
-
-    private Process _browser;
-
-    private boolean _keepUserDataDir;
-
-    private String _userDataDir;
-
-    private ChromeOptions chromeOptions;
-
-
-    public void get(String url) {
+class UndetectedChromeDriver(
+    private val chromeOptions: ChromeOptions?,
+    private val _headless: Boolean,
+    private val _keepUserDataDir: Boolean,
+    private val _userDataDir: String?,
+    private val _browser: Process?
+) : ChromeDriver(chromeOptions) {
+    override fun get(url: String) {
         if (_headless) {
-            _headless();
+            _headless()
         }
-        _cdcProps();
-        super.get(url);
+        _cdcProps()
+        super.get(url)
     }
 
 
-    public void quit(){
-        super.quit();
+    override fun quit() {
+        super.quit()
         // kill process
-        _browser.destroyForcibly();
+        _browser?.destroyForcibly()
         //delete temp user dir
-        if(_keepUserDataDir){
-            for (int i = 0;i<5;i++) {
+        if (_keepUserDataDir) {
+            for (i in 0..4) {
                 try {
-                    File file =  new File(_userDataDir);
-                    if(!file.exists()){
-                        break;
+                    val file = File(_userDataDir)
+                    if (!file.exists()) {
+                        break
                     }
-                    boolean f =file.delete();
-                    if(f){
-                        break;
+                    val f = file.delete()
+                    if (f) {
+                        break
                     }
-                }
-                catch (Exception e) {
+                } catch (e: Exception) {
                     try {
-                        Thread.sleep(300);
-                    }catch (Exception ignored){ }
+                        Thread.sleep(300)
+                    } catch (ignored: Exception) {
+                    }
                 }
             }
         }
-
-    }
-
-    public UndetectedChromeDriver(ChromeOptions chromeOptions,
-                                  boolean headless,
-                                  boolean keepUserDataDir,
-                                  String userDataDir,
-                                  Process browser){
-
-        super(chromeOptions);
-        this.chromeOptions = chromeOptions;
-        _browser = browser;
-        _headless = headless;
-        _keepUserDataDir = keepUserDataDir;
-        _userDataDir = userDataDir;
     }
 
     /**
      * configure headless
      */
-    private void _headless(){
+    private fun _headless() {
         //set navigator.webdriver
-        Object f = this.executeScript("return navigator.webdriver");
-        if(f==null){
-            return;
-        }
+        val f = this.executeScript("return navigator.webdriver") ?: return
 
-        Map<String,Object> params1 = new HashMap<>();
-        params1.put("source","Object.defineProperty(window, 'navigator', {\n" +
-                "    value: new Proxy(navigator, {\n" +
-                "        has: (target, key) => (key === 'webdriver' ? false : key in target),\n" +
-                "        get: (target, key) =>\n" +
-                "            key === 'webdriver' ?\n" +
-                "            false :\n" +
-                "            typeof target[key] === 'function' ?\n" +
-                "            target[key].bind(target) :\n" +
-                "            target[key]\n" +
-                "        })\n" +
-                "});");
+        val params1: MutableMap<String, Any> = HashMap()
+        params1["source"] = """Object.defineProperty(window, 'navigator', {
+    value: new Proxy(navigator, {
+        has: (target, key) => (key === 'webdriver' ? false : key in target),
+        get: (target, key) =>
+            key === 'webdriver' ?
+            false :
+            typeof target[key] === 'function' ?
+            target[key].bind(target) :
+            target[key]
+        })
+});"""
 
-        this.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument",params1);
+        this.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", params1)
 
         //set ua
-        Map<String,Object> params2 = new HashMap<>();
-        params2.put("userAgent",((String)this.executeScript("return navigator.userAgent")).replace("Headless",""));
-        this.executeCdpCommand("Network.setUserAgentOverride",params2);
+        val params2: MutableMap<String, Any> = HashMap()
+        params2["userAgent"] =
+            (this.executeScript("return navigator.userAgent") as String).replace("Headless", "")
+        this.executeCdpCommand("Network.setUserAgentOverride", params2)
 
-        Map<String,Object> params3 = new HashMap<>();
-        params3.put("source","Object.defineProperty(navigator, 'maxTouchPoints', {get: () => 1});");
-        this.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument",params3);
+        val params3: MutableMap<String, Any> = HashMap()
+        params3["source"] = "Object.defineProperty(navigator, 'maxTouchPoints', {get: () => 1});"
+        this.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", params3)
 
-        Map<String,Object> params4 = new HashMap<>();
-        params4.put("source","" +
-                "Object.defineProperty(navigator.connection, 'rtt', {get: () => 100});\n" +
-                "// https://github.com/microlinkhq/browserless/blob/master/packages/goto/src/evasions/chrome-runtime.js\n" +
-                "window.chrome = {\n" +
-                "        app: {\n" +
-                "            isInstalled: false,\n" +
-                "            InstallState: {\n" +
-                "                DISABLED: 'disabled',\n" +
-                "                INSTALLED: 'installed',\n" +
-                "                NOT_INSTALLED: 'not_installed'\n" +
-                "            },\n" +
-                "            RunningState: {\n" +
-                "                CANNOT_RUN: 'cannot_run',\n" +
-                "                READY_TO_RUN: 'ready_to_run',\n" +
-                "                RUNNING: 'running'\n" +
-                "            }\n" +
-                "        },\n" +
-                "        runtime: {\n" +
-                "            OnInstalledReason: {\n" +
-                "                CHROME_UPDATE: 'chrome_update',\n" +
-                "                INSTALL: 'install',\n" +
-                "                SHARED_MODULE_UPDATE: 'shared_module_update',\n" +
-                "                UPDATE: 'update'\n" +
-                "            },\n" +
-                "            OnRestartRequiredReason: {\n" +
-                "                APP_UPDATE: 'app_update',\n" +
-                "                OS_UPDATE: 'os_update',\n" +
-                "                PERIODIC: 'periodic'\n" +
-                "            },\n" +
-                "            PlatformArch: {\n" +
-                "                ARM: 'arm',\n" +
-                "                ARM64: 'arm64',\n" +
-                "                MIPS: 'mips',\n" +
-                "                MIPS64: 'mips64',\n" +
-                "                X86_32: 'x86-32',\n" +
-                "                X86_64: 'x86-64'\n" +
-                "            },\n" +
-                "            PlatformNaclArch: {\n" +
-                "                ARM: 'arm',\n" +
-                "                MIPS: 'mips',\n" +
-                "                MIPS64: 'mips64',\n" +
-                "                X86_32: 'x86-32',\n" +
-                "                X86_64: 'x86-64'\n" +
-                "            },\n" +
-                "            PlatformOs: {\n" +
-                "                ANDROID: 'android',\n" +
-                "                CROS: 'cros',\n" +
-                "                LINUX: 'linux',\n" +
-                "                MAC: 'mac',\n" +
-                "                OPENBSD: 'openbsd',\n" +
-                "                WIN: 'win'\n" +
-                "            },\n" +
-                "            RequestUpdateCheckStatus: {\n" +
-                "                NO_UPDATE: 'no_update',\n" +
-                "                THROTTLED: 'throttled',\n" +
-                "                UPDATE_AVAILABLE: 'update_available'\n" +
-                "            }\n" +
-                "        }\n" +
-                "}\n" +
-                "\n" +
-                "// https://github.com/microlinkhq/browserless/blob/master/packages/goto/src/evasions/navigator-permissions.js\n" +
-                "if (!window.Notification) {\n" +
-                "        window.Notification = {\n" +
-                "            permission: 'denied'\n" +
-                "        }\n" +
-                "}\n" +
-                "\n" +
-                "const originalQuery = window.navigator.permissions.query\n" +
-                "window.navigator.permissions.__proto__.query = parameters =>\n" +
-                "        parameters.name === 'notifications'\n" +
-                "            ? Promise.resolve({ state: window.Notification.permission })\n" +
-                "            : originalQuery(parameters)\n" +
-                "        \n" +
-                "const oldCall = Function.prototype.call \n" +
-                "function call() {\n" +
-                "        return oldCall.apply(this, arguments)\n" +
-                "}\n" +
-                "Function.prototype.call = call\n" +
-                "\n" +
-                "const nativeToStringFunctionString = Error.toString().replace(/Error/g, 'toString')\n" +
-                "const oldToString = Function.prototype.toString\n" +
-                "\n" +
-                "function functionToString() {\n" +
-                "        if (this === window.navigator.permissions.query) {\n" +
-                "            return 'function query() { [native code] }'\n" +
-                "        }\n" +
-                "        if (this === functionToString) {\n" +
-                "            return nativeToStringFunctionString\n" +
-                "        }\n" +
-                "        return oldCall.call(oldToString, this)\n" +
-                "}\n" +
-                "// eslint-disable-next-line\n" +
-                "Function.prototype.toString = functionToString");
-        this.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument",params4);
+        val params4: MutableMap<String, Any> = HashMap()
+        params4["source"] = """Object.defineProperty(navigator.connection, 'rtt', {get: () => 100});
+// https://github.com/microlinkhq/browserless/blob/master/packages/goto/src/evasions/chrome-runtime.js
+window.chrome = {
+        app: {
+            isInstalled: false,
+            InstallState: {
+                DISABLED: 'disabled',
+                INSTALLED: 'installed',
+                NOT_INSTALLED: 'not_installed'
+            },
+            RunningState: {
+                CANNOT_RUN: 'cannot_run',
+                READY_TO_RUN: 'ready_to_run',
+                RUNNING: 'running'
+            }
+        },
+        runtime: {
+            OnInstalledReason: {
+                CHROME_UPDATE: 'chrome_update',
+                INSTALL: 'install',
+                SHARED_MODULE_UPDATE: 'shared_module_update',
+                UPDATE: 'update'
+            },
+            OnRestartRequiredReason: {
+                APP_UPDATE: 'app_update',
+                OS_UPDATE: 'os_update',
+                PERIODIC: 'periodic'
+            },
+            PlatformArch: {
+                ARM: 'arm',
+                ARM64: 'arm64',
+                MIPS: 'mips',
+                MIPS64: 'mips64',
+                X86_32: 'x86-32',
+                X86_64: 'x86-64'
+            },
+            PlatformNaclArch: {
+                ARM: 'arm',
+                MIPS: 'mips',
+                MIPS64: 'mips64',
+                X86_32: 'x86-32',
+                X86_64: 'x86-64'
+            },
+            PlatformOs: {
+                ANDROID: 'android',
+                CROS: 'cros',
+                LINUX: 'linux',
+                MAC: 'mac',
+                OPENBSD: 'openbsd',
+                WIN: 'win'
+            },
+            RequestUpdateCheckStatus: {
+                NO_UPDATE: 'no_update',
+                THROTTLED: 'throttled',
+                UPDATE_AVAILABLE: 'update_available'
+            }
+        }
+}
 
+// https://github.com/microlinkhq/browserless/blob/master/packages/goto/src/evasions/navigator-permissions.js
+if (!window.Notification) {
+        window.Notification = {
+            permission: 'denied'
+        }
+}
 
+const originalQuery = window.navigator.permissions.query
+window.navigator.permissions.__proto__.query = parameters =>
+        parameters.name === 'notifications'
+            ? Promise.resolve({ state: window.Notification.permission })
+            : originalQuery(parameters)
+        
+const oldCall = Function.prototype.call 
+function call() {
+        return oldCall.apply(this, arguments)
+}
+Function.prototype.call = call
+
+const nativeToStringFunctionString = Error.toString().replace(/Error/g, 'toString')
+const oldToString = Function.prototype.toString
+
+function functionToString() {
+        if (this === window.navigator.permissions.query) {
+            return 'function query() { [native code] }'
+        }
+        if (this === functionToString) {
+            return nativeToStringFunctionString
+        }
+        return oldCall.call(oldToString, this)
+}
+// eslint-disable-next-line
+Function.prototype.toString = functionToString"""
+        this.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", params4)
     }
 
     /**
      * remove cdc
      */
-    private void _cdcProps(){
-        List<String> f = (List<String>)this.executeScript("let objectToInspect = window,\n" +
-                "    result = [];\n" +
-                "while(objectToInspect !== null)\n" +
-                "{ result = result.concat(Object.getOwnPropertyNames(objectToInspect));\n" +
-                "  objectToInspect = Object.getPrototypeOf(objectToInspect); }\n" +
-                "return result.filter(i => i.match(/.+_.+_(Array|Promise|Symbol)/ig))");
+    private fun _cdcProps() {
+        val f = this.executeScript(
+            """let objectToInspect = window,
+    result = [];
+while(objectToInspect !== null)
+{ result = result.concat(Object.getOwnPropertyNames(objectToInspect));
+  objectToInspect = Object.getPrototypeOf(objectToInspect); }
+return result.filter(i => i.match(/.+_.+_(Array|Promise|Symbol)/ig))"""
+        ) as List<String>
 
-        if(f!=null && f.size()>0) {
-            Map<String, Object> param = new HashMap<>();
-            param.put("source", "let objectToInspect = window,\n" +
-                    "    result = [];\n" +
-                    "while(objectToInspect !== null)\n" +
-                    "{ result = result.concat(Object.getOwnPropertyNames(objectToInspect));\n" +
-                    "  objectToInspect = Object.getPrototypeOf(objectToInspect); }\n" +
-                    "result.forEach(p => p.match(/.+_.+_(Array|Promise|Symbol)/ig)\n" +
-                    "                    &&delete window[p]&&console.log('removed',p))");
-            this.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", param);
+        if (f != null && f.size > 0) {
+            val param: MutableMap<String, Any> = HashMap()
+            param["source"] = """let objectToInspect = window,
+    result = [];
+while(objectToInspect !== null)
+{ result = result.concat(Object.getOwnPropertyNames(objectToInspect));
+  objectToInspect = Object.getPrototypeOf(objectToInspect); }
+result.forEach(p => p.match(/.+_.+_(Array|Promise|Symbol)/ig)
+                    &&delete window[p]&&console.log('removed',p))"""
+            this.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", param)
         }
-
     }
 
     /**
-     *  set stealth
+     * set stealth
      */
-    private void _stealth() {
-        StringBuilder stringBuffer = new StringBuilder();
-        BufferedReader bufferedReader = null;
+    private fun _stealth() {
+        val stringBuffer = StringBuilder()
+        var bufferedReader: BufferedReader? = null
         try {
-            InputStream in = this.getClass().getResourceAsStream("/static/js/stealth.min.js");
-            bufferedReader = new BufferedReader(new InputStreamReader(in));
-            String str = null;
-            while ((str = bufferedReader.readLine()) != null) {
-                stringBuffer.append(str);
-                stringBuffer.append("\n");
+            val `in` = this.javaClass.getResourceAsStream("/static/js/stealth.min.js")
+            bufferedReader = BufferedReader(InputStreamReader(`in`))
+            var str: String? = null
+            while ((bufferedReader.readLine().also { str = it }) != null) {
+                stringBuffer.append(str)
+                stringBuffer.append("\n")
             }
-            in.close();
-            bufferedReader.close();
-        } catch (Exception ignored) { }
-        Map<String, Object> params = new HashMap<>();
-        params.put("source", stringBuffer.toString());
-        this.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", params);
-    }
-
-    @Override
-    public void startSession(Capabilities capabilities) {
-        if (capabilities==null){
-            capabilities = this.chromeOptions;
+            `in`.close()
+            bufferedReader.close()
+        } catch (ignored: Exception) {
         }
-        super.startSession(capabilities);
+        val params: MutableMap<String, Any> = HashMap()
+        params["source"] = stringBuffer.toString()
+        this.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", params)
     }
 
+    public override fun startSession(capabilities: Capabilities) {
+        var capabilities: Capabilities? = capabilities
+        if (capabilities == null) {
+            capabilities = this.chromeOptions
+        }
+        super.startSession(capabilities)
+    }
 }
 
 

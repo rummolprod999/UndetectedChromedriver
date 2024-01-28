@@ -1,110 +1,103 @@
-package com.frogking.chromedriver;
+package com.frogking.chromedriver
 
-import org.checkerframework.checker.regex.qual.Regex;
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileReader
+import java.io.RandomAccessFile
+import java.nio.charset.StandardCharsets
+import java.util.*
+import java.util.regex.Pattern
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.Random;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-public class Patcher {
-
-    private String _driverExecutablePath;
-
-    public Patcher(String _driverExecutablePath){
-        this._driverExecutablePath = _driverExecutablePath;
-    }
-
-    public void Auto() throws Exception {
-        if (!isBinaryPatched()){
-            patchExe();
+class Patcher(private val _driverExecutablePath: String?) {
+    @Throws(Exception::class)
+    fun Auto() {
+        if (!isBinaryPatched) {
+            patchExe()
         }
     }
 
-    private boolean isBinaryPatched() throws Exception{
-        if (_driverExecutablePath == null) {
-            throw new RuntimeException("driverExecutablePath is required.");
-        }
-        File file = new File(_driverExecutablePath);
+    @get:Throws(Exception::class)
+    private val isBinaryPatched: Boolean
+        get() {
+            if (_driverExecutablePath == null) {
+                throw RuntimeException("driverExecutablePath is required.")
+            }
+            val file = File(_driverExecutablePath)
 
-        BufferedReader br = null;
+            var br: BufferedReader? = null
+            try {
+                br = BufferedReader(FileReader(file, StandardCharsets.ISO_8859_1))
+
+                var line: String? = null
+
+                while ((br.readLine().also { line = it }) != null) {
+                    if (line!!.contains("undetected chromedriver")) {
+                        return true
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                if (br != null) {
+                    try {
+                        br.close()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+            return false
+        }
+
+    private fun patchExe(): Int {
+        val linect = 0
+        val replacement = genRandomCdc()
+        var file: RandomAccessFile? = null
         try {
-            br = new BufferedReader(new FileReader(file, StandardCharsets.ISO_8859_1));
+            file = RandomAccessFile(_driverExecutablePath, "rw")
 
-            String line = null;
-
-            while ((line = br.readLine()) != null) {
-                if (line.contains("undetected chromedriver")) {
-                    return true;
+            val buffer = ByteArray(1024)
+            val stringBuilder = StringBuilder()
+            var read: Long = 0
+            while (true) {
+                read = file.read(buffer, 0, buffer.size).toLong()
+                if (read == 0L || read == -1L) {
+                    break
                 }
+                stringBuilder.append(String(buffer, 0, read.toInt(), StandardCharsets.ISO_8859_1))
             }
-
-        }catch (Exception e){
-            e.printStackTrace();
-        }finally {
-            if(br!=null){
-                try{
-                    br.close();
-                }catch (Exception e){
-                    e.printStackTrace();
+            val content = stringBuilder.toString()
+            val pattern = Pattern.compile("\\{window\\.cdc.*?;\\}")
+            val matcher = pattern.matcher(content)
+            if (matcher.find()) {
+                val group = matcher.group()
+                val newTarget = StringBuilder("{console.log(\"undetected chromedriver 1337!\"}")
+                val k = group.length - newTarget.length
+                for (i in 0 until k) {
+                    newTarget.append(" ")
                 }
+                val newContent = content.replace(group, newTarget.toString())
+
+                file.seek(0)
+                file.write(newContent.toByteArray(StandardCharsets.ISO_8859_1))
             }
-        }
-        return false;
-    }
-
-    private int patchExe(){
-
-        int linect = 0;
-        String replacement = genRandomCdc();
-        RandomAccessFile file = null;
-        try {
-            file = new RandomAccessFile(_driverExecutablePath, "rw");
-
-            byte[] buffer = new byte[1024];
-            StringBuilder stringBuilder = new StringBuilder();
-            long read = 0;
-            while(true){
-                read = file.read(buffer,0,buffer.length);
-                if(read == 0 || read == -1){
-                    break;
-                }
-                stringBuilder.append(new String(buffer,0,(int)read,StandardCharsets.ISO_8859_1));
-            }
-            String content = stringBuilder.toString();
-            Pattern pattern = Pattern.compile("\\{window\\.cdc.*?;\\}");
-            Matcher matcher = pattern.matcher(content);
-            if(matcher.find()){
-                String group = matcher.group();
-                StringBuilder newTarget = new StringBuilder("{console.log(\"undetected chromedriver 1337!\"}");
-                int k = group.length() - newTarget.length();
-                for (int i = 0; i < k; i++) {
-                    newTarget.append(" ");
-                }
-                String newContent = content.replace(group, newTarget.toString());
-
-                file.seek(0);
-                file.write(newContent.getBytes(StandardCharsets.ISO_8859_1));
-            }
-
-        }catch (Exception e){
-            e.printStackTrace();
-        }finally {
-            if(file!=null){
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            if (file != null) {
                 try {
-                    file.close();
-                }catch (Exception e){
-                    e.printStackTrace();
+                    file.close()
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
         }
-        return linect;
+        return linect
     }
 
-    private String genRandomCdc() {
-        String chars = "abcdefghijklmnopqrstuvwxyz";
-        Random random = new Random();
+    private fun genRandomCdc(): String {
+        val chars = "abcdefghijklmnopqrstuvwxyz"
+        val random = Random()
         /*
         char[] cdc = new char[26];
 
@@ -119,11 +112,10 @@ public class Patcher {
         return new String(cdc);
 
          */
-        char[] cdc = new char[27];
-        for(int i=0;i<27;i++){
-            cdc[i] = chars.charAt(random.nextInt(chars.length()));
+        val cdc = CharArray(27)
+        for (i in 0..26) {
+            cdc[i] = chars[random.nextInt(chars.length)]
         }
-        return new String(cdc);
+        return String(cdc)
     }
-
 }

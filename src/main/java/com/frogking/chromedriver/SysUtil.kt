@@ -1,65 +1,65 @@
-package com.frogking.chromedriver;
+package com.frogking.chromedriver
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*
 
-public class SysUtil {
+object SysUtil {
+    val isWindows: Boolean
+        /**
+         * judge os is Windows
+         * @return true：is windows  false：another
+         */
+        get() {
+            val osName = osName
+            return osName != null && osName.startsWith("Windows")
+        }
 
-    /**
-     * judge os is Windows
-     * @return true：is windows  false：another
-     */
-    public static boolean isWindows() {
-        String osName = getOsName();
-        return osName != null && osName.startsWith("Windows");
-    }
+    val isMacOs: Boolean
+        /**
+         * judge os is mac
+         * @return true：is mac  false：another
+         */
+        get() {
+            val osName = osName
 
-    /**
-     * judge os is mac
-     * @return true：is mac  false：another
-     */
-    public static boolean isMacOs() {
-        String osName = getOsName();
+            return osName != null && osName.startsWith("Mac")
+        }
 
-        return osName != null && osName.startsWith("Mac");
-    }
+    val isLinux: Boolean
+        /**
+         * judge os is Linux
+         * @return true：is linux  false：another
+         */
+        get() {
+            val osName = osName
 
-    /**
-     * judge os is Linux
-     * @return true：is linux  false：another
-     */
-    public static boolean isLinux() {
-        String osName = getOsName();
+            return (osName != null && osName.startsWith("Linux")) || (!isWindows && !isMacOs)
+        }
 
-        return (osName != null && osName.startsWith("Linux")) || (!isWindows() && !isMacOs());
-    }
+    val osName: String
+        /**
+         * get os name
+         * @return os.name
+         */
+        get() = System.getProperty("os.name")
 
-    /**
-     * get os name
-     * @return os.name
-     */
-    public static String getOsName() {
-        return System.getProperty("os.name");
-    }
-
-    /**
-     * get env PATH
-     * @return PATHs
-     */
-    public static List<String> getPath(){
-        String sep = System.getProperty("path.separator");
-        String paths = System.getenv("PATH");
-        return new ArrayList<>(Arrays.asList(paths.split(sep)));
-    }
+    val path: List<String>
+        /**
+         * get env PATH
+         * @return PATHs
+         */
+        get() {
+            val sep = System.getProperty("path.separator")
+            val paths = System.getenv("PATH")
+            return ArrayList(Arrays.asList(*paths.split(sep.toRegex()).dropLastWhile { it.isEmpty() }
+                .toTypedArray()))
+        }
 
     /**
      * get one PATH by key
      * @param key PATH key
      * @return PATH value
      */
-    public static String getString(String key){
-        return System.getenv(key);
+    fun getString(key: String?): String {
+        return System.getenv(key)
     }
-
 }
