@@ -1,4 +1,4 @@
-# undetected-chromedriver for java
+# undetected-chromedriver for java/kotlin
 
 https://github.com/mabinogi233/UndetectedChromedriver
 ___
@@ -61,29 +61,6 @@ ChromeDriver chromeDriver2 = new ChromeDriverBuilder()
 
 chromeDriver2.get("https://bot.sannysoft.com");
 ```
-
----
-
-## · v1.0.1 version log
-
-This is the second version. fix headless mode can't use problem.
-
-Use ChromeDriverBuilder to get a UndetectedChromeDriver
-
-param
-
-+ ChromeOptions options **default null**
-  + same as selenium chrome options
-+ String driverExecutablePath **notnull**
-  + chromeDriver absolute path         
-+ String binaryLocation  **default null**
-  + excutable chrome path
-+ boolean headless  **default false**
-  + headless or not
-+ boolean suppressWelcome  **default true**
-  + if this is true, chrome won't show welcome bar 
-+ boolean needPrintChromeInfo  **default false**
-  + if this is true, System.out will print chrome process's error and other mssage
 + Map <String, Object> prefs  **default null** 
   + when prefs not null, you could make sure options hasn't experimentalOptions params prefs 
 
