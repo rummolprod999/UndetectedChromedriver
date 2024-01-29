@@ -1,4 +1,4 @@
-package com.frogking.chromedriver
+package com.rummolprod999.chromedriver
 
 import org.openqa.selenium.Capabilities
 import org.openqa.selenium.chrome.ChromeDriver
