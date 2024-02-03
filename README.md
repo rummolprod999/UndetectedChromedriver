@@ -1,4 +1,4 @@
-# undetected-chromedriver for java/kotlin
+# undetected-chromedriver for jvm
 
 https://github.com/mabinogi233/UndetectedChromedriver
 ___
