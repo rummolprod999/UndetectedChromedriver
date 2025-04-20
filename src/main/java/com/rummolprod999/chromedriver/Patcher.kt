@@ -51,7 +51,7 @@ class Patcher(private val _driverExecutablePath: String?) {
 
     private fun patchExe(): Int {
         val linect = 0
-        val replacement = genRandomCdc()
+        genRandomCdc()
         var file: RandomAccessFile? = null
         try {
             file = RandomAccessFile(_driverExecutablePath, "rw")

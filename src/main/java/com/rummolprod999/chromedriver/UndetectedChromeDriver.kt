@@ -54,7 +54,7 @@ class UndetectedChromeDriver(
      */
     private fun _headless() {
         //set navigator.webdriver
-        val f = this.executeScript("return navigator.webdriver") ?: return
+        this.executeScript("return navigator.webdriver") ?: return
 
         val params1: MutableMap<String, Any> = HashMap()
         params1["source"] = """Object.defineProperty(window, 'navigator', {

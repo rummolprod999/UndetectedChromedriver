@@ -581,7 +581,7 @@ class ChromeDriverBuilder() {
         var socket: ServerSocket? = null
         try {
             socket = ServerSocket(0)
-            return socket.getLocalPort()
+            return socket.localPort
         } catch (e: Exception) {
             e.printStackTrace()
             return -1
@@ -612,7 +612,7 @@ class ChromeDriverBuilder() {
      */
     @Throws(RuntimeException::class)
     private fun _getChromePath(): String {
-        val os = System.getProperties().getProperty("os.name")
+        System.getProperties().getProperty("os.name")
         var chromeDataPath: String? = null
         val IS_POSIX = SysUtil.isMacOs || SysUtil.isLinux
         val possibles: MutableSet<String> = HashSet()
